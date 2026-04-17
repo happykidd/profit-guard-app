@@ -1,6 +1,6 @@
 client_id = "3df4ebeed831cbb2bc9c4adc45d655cc"
 name = "Profit Guard"
-application_url = "https://profit-guard-web.onrender.com"
+application_url = "https://profit.wsy400.com"
 embedded = true
 
 [build]
@@ -34,6 +34,6 @@ uri = "/webhooks/compliance"
 
 [auth]
 redirect_urls = [
-  "https://profit-guard-web.onrender.com/api/auth",
-  "https://profit-guard-web.onrender.com/auth/callback",
+  "https://profit.wsy400.com/api/auth",
+  "https://profit.wsy400.com/auth/callback",
 ]
