@@ -87,6 +87,7 @@ services:
     dockerfilePath: ./docker/render/worker.Dockerfile
     dockerContext: .
     autoDeployTrigger: off
+    preDeployCommand: pnpm db:migrate:deploy
     buildFilter:
       paths:
         - apps/worker/**
@@ -169,4 +170,3 @@ databases:
     diskSizeGB: 15
     storageAutoscalingEnabled: true
     ipAllowList: []
-
