@@ -64,6 +64,76 @@ function formatPercent(value?: string | number | null) {
   }).format(numericValue);
 }
 
+function formatPlatformActivityTitle(topic: string) {
+  const normalized = topic.trim().toLowerCase();
+
+  if (normalized.includes("app/uninstalled")) {
+    return "App uninstalled";
+  }
+
+  if (normalized.includes("app/scopes_update") || normalized.includes("app_scopes_update")) {
+    return "Permissions updated";
+  }
+
+  if (normalized.includes("shop/update") || normalized.includes("shop_update")) {
+    return "Store settings updated";
+  }
+
+  if (normalized.includes("app_subscriptions/update") || normalized.includes("app/subscriptions/update")) {
+    return "Subscription updated";
+  }
+
+  return topic
+    .replace(/[_/]+/g, " ")
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function getRecommendedNextStep(input: {
+  recentDailyMetricsCount: number;
+  activeAlertsCount: number;
+  subscriptionStatus: string;
+  trialEndsAt?: string | null;
+}) {
+  if (input.recentDailyMetricsCount === 0) {
+    return {
+      title: "Run your first rebuild",
+      body: "Profit Guard is installed, but no daily profitability metrics are available yet. Queue a daily rebuild to generate your first dashboard, alerts, and reports.",
+      ctaLabel: "Queue daily rebuild",
+      queueIntent: "queue_daily",
+    } as const;
+  }
+
+  if (input.activeAlertsCount > 0) {
+    return {
+      title: "Review active alerts",
+      body: "Your store has active alerts that may affect margin, refunds, or data quality. Review the queue and resolve the highest-impact items first.",
+      ctaLabel: "Open Alerts",
+      href: "/app/alerts",
+    } as const;
+  }
+
+  if (input.subscriptionStatus === "TRIALING" && input.trialEndsAt) {
+    const remainingMs = new Date(input.trialEndsAt).getTime() - Date.now();
+    const remainingDays = remainingMs / (1000 * 60 * 60 * 24);
+
+    if (Number.isFinite(remainingDays) && remainingDays <= 7) {
+      return {
+        title: "Review your billing plan",
+        body: "Your trial is ending soon. Confirm the right plan so Profit Guard can keep monitoring your store without interruption.",
+        ctaLabel: "Open Billing",
+        href: "/app/billing",
+      } as const;
+    }
+  }
+
+  return {
+    title: "Review the latest report",
+    body: "Your profitability summary is ready. Open the reports workspace to review highlights, watchouts, and recommended actions.",
+    ctaLabel: "Open Reports",
+    href: "/app/reports",
+  } as const;
+}
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shopDomain = session.shop;
@@ -319,6 +389,12 @@ export default function Index() {
   const activeSubscription = data.billingState.appSubscriptions[0] ?? null;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const recommendedNextStep = getRecommendedNextStep({
+    recentDailyMetricsCount: data.recentDailyMetrics.length,
+    activeAlertsCount: data.topAlerts.length,
+    subscriptionStatus: data.billingState.subscriptionStatus,
+    trialEndsAt: data.billingState.trialEndsAt,
+  });
 
   return (
     <s-page heading="Profit Guard Dashboard">
@@ -604,7 +680,37 @@ export default function Index() {
         )}
       </s-section>
 
-      <s-section slot="aside" heading="Recent webhooks">
+      <s-section slot="aside" heading="Recommended next step">
+        <s-paragraph>
+          <strong>{recommendedNextStep.title}</strong>
+        </s-paragraph>
+        <s-paragraph>{recommendedNextStep.body}</s-paragraph>
+        {"queueIntent" in recommendedNextStep ? (
+          <Form method="post">
+            <input type="hidden" name="intent" value={recommendedNextStep.queueIntent} />
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              style={{
+                appearance: "none",
+                border: "1px solid #111827",
+                borderRadius: "999px",
+                padding: "0.55rem 0.9rem",
+                background: "#111827",
+                color: "#ffffff",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {recommendedNextStep.ctaLabel}
+            </button>
+          </Form>
+        ) : (
+          <s-link href={recommendedNextStep.href}>{recommendedNextStep.ctaLabel}</s-link>
+        )}
+      </s-section>
+
+      <s-section slot="aside" heading="Platform activity">
         {data.recentWebhookEvents.length > 0 ? (
           <div style={{ display: "grid", gap: "0.75rem" }}>
             {data.recentWebhookEvents.map((event) => (
@@ -615,7 +721,7 @@ export default function Index() {
                 borderRadius="base"
                 background="subdued"
               >
-                <strong>{event.topic}</strong>
+                <strong>{formatPlatformActivityTitle(event.topic)}</strong>
                 <div>Status: {event.status}</div>
                 <div>Received: {formatDate(event.receivedAt)}</div>
                 <div>Processed: {formatDate(event.processedAt)}</div>
@@ -623,17 +729,18 @@ export default function Index() {
             ))}
           </div>
         ) : (
-          <s-paragraph>No webhook traffic has been recorded yet.</s-paragraph>
+          <s-paragraph>No recent platform activity has been recorded yet.</s-paragraph>
         )}
       </s-section>
 
-      <s-section slot="aside" heading="Next execution focus">
-        <s-paragraph>
-          This dashboard is the live operating workspace for Profit Guard, not a starter template.
-        </s-paragraph>
-        <s-paragraph>
-          Historical sync, profit calculation, cost workflows, and first-line alerts are already connected. The next priority is validating outcomes against live store data and closing the alert action loop.
-        </s-paragraph>
+      <s-section slot="aside" heading="Quick links">
+        <div style={{ display: "grid", gap: "0.5rem" }}>
+          <s-link href="/app/alerts">Open Alerts</s-link>
+          <s-link href="/app/reports">Open Reports</s-link>
+          <s-link href="/app/costs">Open Cost Center</s-link>
+          <s-link href="/app/billing">Open Billing</s-link>
+          <s-link href="/docs">View support docs</s-link>
+        </div>
       </s-section>
     </s-page>
   );
