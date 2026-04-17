@@ -1,0 +1,43 @@
+{
+  "name": "profit-guard-app",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @profit-guard/web dev",
+    "dev:worker": "pnpm --filter @profit-guard/worker dev",
+    "seed:real-store": "pnpm --filter @profit-guard/worker seed:real-store",
+    "worker:once": "pnpm --filter @profit-guard/worker run:once",
+    "build": "pnpm -r --if-present build",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "verify:offline": "pnpm typecheck && pnpm test && pnpm lint && pnpm build && pnpm test:smoke:reports && pnpm test:smoke:alert-lifecycle && pnpm test:smoke:alerts && pnpm test:smoke:backfill && pnpm test:smoke:costs && pnpm test:smoke:cost-batches && pnpm test:smoke:fallback-rules && pnpm test:smoke:settings-lifecycle && pnpm test:smoke:supplier-contract-batches && pnpm test:smoke:supplier-contracts",
+    "test:smoke:alert-lifecycle": "pnpm --filter @profit-guard/web smoke:alert-lifecycle",
+    "test:smoke:alerts": "pnpm --filter @profit-guard/worker smoke:alerts",
+    "test:smoke:backfill": "pnpm --filter @profit-guard/worker smoke:backfill",
+    "test:smoke:email": "pnpm --filter @profit-guard/worker smoke:email",
+    "test:smoke:cost-batches": "pnpm --filter @profit-guard/web smoke:cost-batches",
+    "test:smoke:costs": "pnpm --filter @profit-guard/web smoke:costs",
+    "test:smoke:fallback-rules": "pnpm --filter @profit-guard/web smoke:fallback-rules",
+    "test:smoke:reports": "pnpm --filter @profit-guard/web smoke:reports",
+    "test:smoke:settings-lifecycle": "pnpm --filter @profit-guard/web smoke:settings-lifecycle",
+    "test:smoke:supplier-contract-batches": "pnpm --filter @profit-guard/web smoke:supplier-contract-batches",
+    "test:smoke:supplier-contracts": "pnpm --filter @profit-guard/web smoke:supplier-contracts",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "db:generate": "prisma generate --schema ./packages/db/prisma/schema.prisma",
+    "db:validate": "prisma validate --schema ./packages/db/prisma/schema.prisma",
+    "db:migrate:dev": "prisma migrate dev --schema ./packages/db/prisma/schema.prisma",
+    "db:migrate:deploy": "prisma migrate deploy --schema ./packages/db/prisma/schema.prisma",
+    "db:studio": "prisma studio --schema ./packages/db/prisma/schema.prisma"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.8",
+    "eslint": "^8.57.1",
+    "prettier": "^3.6.2",
+    "prisma": "^6.19.3",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

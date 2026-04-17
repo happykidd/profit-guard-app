@@ -1,0 +1,14 @@
+node_modules
+.pnpm-store
+.DS_Store
+.env
+.env.local
+.env.production
+.env.development
+.cache
+apps/web/build
+apps/worker/dist
+coverage
+tmp
+docker-compose.yml
+REVIEW_CODEBASE_REPORT.md

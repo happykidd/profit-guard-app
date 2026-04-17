@@ -1,0 +1,957 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BackfillStatus {
+  NOT_STARTED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum BillingPlan {
+  FREE
+  STARTER
+  GROWTH
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PENDING
+  CANCELLED
+  EXPIRED
+  DECLINED
+  FROZEN
+}
+
+enum SyncRunType {
+  SHOP_BOOTSTRAP
+  PRODUCT_BACKFILL
+  ORDER_BACKFILL
+  WEBHOOK_RECONCILIATION
+  DAILY_REBUILD
+  WEEKLY_REBUILD
+}
+
+enum SyncRunStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum WebhookStatus {
+  RECEIVED
+  PROCESSED
+  IGNORED
+  FAILED
+}
+
+enum CostSourceType {
+  MANUAL
+  CSV
+  CATEGORY_DEFAULT
+  ESTIMATED
+}
+
+enum CostImportType {
+  DIRECT_COSTS
+  SUPPLIER_CONTRACTS
+  FALLBACK_RULES
+}
+
+enum CostImportMode {
+  PREVIEW
+  UPSERT
+  REPLACE
+}
+
+enum CostImportStatus {
+  PREVIEW
+  APPLIED
+  ROLLED_BACK
+  FAILED
+}
+
+enum DataCompletenessLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum AlertSeverity {
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  NEW
+  READ
+  RESOLVED
+  IGNORED
+}
+
+enum ArtifactType {
+  ALERT_EXPLANATION
+  ALERT_ACTION
+  DAILY_SUMMARY
+  WEEKLY_SUMMARY
+}
+
+enum ArtifactStatus {
+  QUEUED
+  GENERATED
+  FAILED
+  FALLBACK
+}
+
+enum FeedbackValue {
+  USEFUL
+  NOT_USEFUL
+  RESOLVED
+  IGNORED
+}
+
+enum SavedViewVisibility {
+  PRIVATE
+  SHARED
+}
+
+enum ReportType {
+  DAILY
+  WEEKLY
+}
+
+enum DigestDeliveryStatus {
+  PREPARED
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum ComplianceRequestStatus {
+  RECEIVED
+  COMPLETED
+  FAILED
+}
+
+model Session {
+  id                  String   @id
+  shop                String
+  state               String
+  isOnline            Boolean  @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean  @default(false)
+  locale              String?
+  collaborator        Boolean? @default(false)
+  emailVerified       Boolean? @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Shop {
+  id                     String                @id @default(cuid())
+  shopDomain             String                @unique
+  shopifyShopId          String?               @unique
+  shopName               String?
+  email                  String?
+  primaryDomain          String?
+  countryCode            String?
+  currencyCode           String?
+  ianaTimezone           String?
+  planName               String?
+  currentPlan            BillingPlan           @default(FREE)
+  subscriptionStatus     SubscriptionStatus    @default(TRIALING)
+  isActive               Boolean               @default(true)
+  backfillStatus         BackfillStatus        @default(NOT_STARTED)
+  installedAt            DateTime              @default(now())
+  uninstalledAt          DateTime?
+  trialEndsAt            DateTime?
+  lastSyncedAt           DateTime?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  subscriptions          BillingSubscription[]
+  billingEvents          BillingEvent[]
+  webhookEvents          WebhookEvent[]
+  syncRuns               SyncRun[]
+  products               Product[]
+  variants               Variant[]
+  orders                 Order[]
+  refunds                Refund[]
+  variantCosts           VariantCost[]
+  supplierContractProfiles SupplierContractProfile[]
+  categoryCostProfiles   CategoryCostProfile[]
+  transactionFeeProfiles TransactionFeeProfile[]
+  notificationPreference NotificationPreference?
+  adSpendEntries         AdSpendManualEntry[]
+  dailyShopMetrics       DailyShopMetric[]
+  dailyChannelMetrics    DailyChannelMetric[]
+  dailySkuMetrics        DailySkuMetric[]
+  healthScores           ProfitHealthScore[]
+  completenessSnapshots  DataCompletenessSnapshot[]
+  alerts                 Alert[]
+  alertThreads           AlertThread[]
+  savedAlertViews        AlertSavedView[]
+  aiArtifacts            AiArtifact[]
+  reports                ReportSnapshot[]
+  reportExports          ReportExport[]
+  digestDeliveries       DigestDelivery[]
+  complianceRequests     ComplianceRequest[]
+  costImportBatches      CostImportBatch[]
+
+  @@index([isActive])
+  @@index([currentPlan])
+  @@index([backfillStatus])
+}
+
+model BillingSubscription {
+  id                 String             @id @default(cuid())
+  shopId             String
+  shop               Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopifyChargeId    String             @unique
+  plan               BillingPlan
+  status             SubscriptionStatus
+  interval           String?
+  priceAmount        Decimal?           @db.Decimal(12, 2)
+  currencyCode       String?
+  trialDays          Int?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelledAt        DateTime?
+  test               Boolean            @default(false)
+  rawPayload         Json?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([shopId, status])
+}
+
+model BillingEvent {
+  id              String   @id @default(cuid())
+  shopId          String
+  shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  eventType       String
+  shopifyChargeId String?
+  payload         Json
+  processedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([shopId, eventType])
+  @@index([shopifyChargeId])
+}
+
+model WebhookEvent {
+  id           String        @id @default(cuid())
+  shopId       String?
+  shop         Shop?         @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  topic        String
+  webhookId    String
+  apiVersion   String?
+  status       WebhookStatus @default(RECEIVED)
+  payload      Json
+  errorMessage String?
+  receivedAt   DateTime      @default(now())
+  processedAt  DateTime?
+
+  @@unique([topic, webhookId])
+  @@index([shopId, topic])
+  @@index([status, receivedAt])
+}
+
+model ComplianceRequest {
+  id                String                  @id @default(cuid())
+  shopId            String?
+  shop              Shop?                   @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  topic             String
+  webhookId         String
+  apiVersion        String?
+  shopDomain        String
+  shopifyShopId     String?
+  requestIdentifier String?
+  customerShopifyId String?
+  customerEmail     String?
+  customerPhone     String?
+  orderIdentifiers  Json?
+  payload           Json
+  resultPayload     Json?
+  status            ComplianceRequestStatus @default(RECEIVED)
+  errorMessage      String?
+  completedAt       DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  @@index([shopId, topic, createdAt])
+  @@index([shopDomain, topic, createdAt])
+  @@unique([topic, webhookId])
+}
+
+model SyncRun {
+  id            String        @id @default(cuid())
+  shopId        String
+  shop          Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  runType       SyncRunType
+  status        SyncRunStatus @default(QUEUED)
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  cursor        String?
+  recordsTotal  Int?
+  recordsSynced Int           @default(0)
+  errorMessage  String?
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+
+  @@index([shopId, runType, status])
+  @@index([createdAt])
+}
+
+model Product {
+  id               String   @id @default(cuid())
+  shopId           String
+  shop             Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopifyProductId String
+  title            String
+  handle           String?
+  vendor           String?
+  productType      String?
+  status           String?
+  tags             Json?
+  createdAtShopify DateTime?
+  updatedAtShopify DateTime?
+  rawPayload       Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  variants         Variant[]
+
+  @@unique([shopId, shopifyProductId])
+  @@index([shopId, productType])
+  @@index([shopId, status])
+}
+
+model Variant {
+  id                String   @id @default(cuid())
+  shopId            String
+  shop              Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  shopifyVariantId  String
+  sku               String?
+  title             String?
+  priceAmount       Decimal? @db.Decimal(12, 2)
+  compareAtAmount   Decimal? @db.Decimal(12, 2)
+  inventoryQuantity Int?
+  weightValue       Decimal? @db.Decimal(10, 3)
+  weightUnit        String?
+  rawPayload        Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  costs             VariantCost[]
+  lineItems         OrderLineItem[]
+  dailySkuMetrics   DailySkuMetric[]
+
+  @@unique([shopId, shopifyVariantId])
+  @@index([shopId, sku])
+}
+
+model Order {
+  id                           String                @id @default(cuid())
+  shopId                       String
+  shop                         Shop                  @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopifyOrderId               String
+  orderName                    String?
+  processedAt                  DateTime?
+  orderCreatedAtShopify        DateTime?
+  orderUpdatedAtShopify        DateTime?
+  currencyCode                 String
+  presentmentCurrencyCode      String?
+  subtotalAmount               Decimal?              @db.Decimal(14, 2)
+  totalDiscountAmount          Decimal?              @db.Decimal(14, 2)
+  totalRefundAmount            Decimal?              @db.Decimal(14, 2)
+  totalTaxAmount               Decimal?              @db.Decimal(14, 2)
+  totalShippingRevenueAmount   Decimal?              @db.Decimal(14, 2)
+  shippingCostEstimateAmount   Decimal?              @db.Decimal(14, 2)
+  transactionFeeEstimateAmount Decimal?              @db.Decimal(14, 2)
+  grossProfitBeforeAdSpend     Decimal?              @db.Decimal(14, 2)
+  salesChannel                 String?
+  sourceName                   String?
+  customerCountryCode          String?
+  dataCompletenessLevel        DataCompletenessLevel @default(LOW)
+  isTest                       Boolean               @default(false)
+  rawPayload                   Json?
+  createdAt                    DateTime              @default(now())
+  updatedAt                    DateTime              @updatedAt
+  lineItems                    OrderLineItem[]
+  refunds                      Refund[]
+  shippingLines                OrderShippingLine[]
+  discounts                    OrderDiscount[]
+  taxLines                     OrderTaxLine[]
+  transactions                 OrderTransactionRaw[]
+
+  @@unique([shopId, shopifyOrderId])
+  @@index([shopId, processedAt])
+  @@index([shopId, salesChannel])
+  @@index([shopId, customerCountryCode])
+}
+
+model OrderLineItem {
+  id                String   @id @default(cuid())
+  orderId           String
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId         String?
+  variant           Variant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  shopifyLineItemId String
+  productTitle      String?
+  variantTitle      String?
+  sku               String?
+  quantity          Int
+  subtotalAmount    Decimal? @db.Decimal(14, 2)
+  discountAmount    Decimal? @db.Decimal(14, 2)
+  taxAmount         Decimal? @db.Decimal(14, 2)
+  refundedAmount    Decimal? @db.Decimal(14, 2)
+  productCostAmount Decimal? @db.Decimal(14, 2)
+  grossProfitAmount Decimal? @db.Decimal(14, 2)
+  rawPayload        Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  refundLineItems   RefundLineItem[]
+
+  @@unique([orderId, shopifyLineItemId])
+  @@index([variantId])
+  @@index([sku])
+}
+
+model Refund {
+  id               String   @id @default(cuid())
+  shopId           String
+  shop             Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  orderId          String
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  shopifyRefundId  String
+  refundedAt       DateTime?
+  totalRefundAmount Decimal? @db.Decimal(14, 2)
+  currencyCode     String?
+  rawPayload       Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  refundLineItems  RefundLineItem[]
+
+  @@unique([shopId, shopifyRefundId])
+  @@index([shopId, refundedAt])
+  @@index([orderId])
+}
+
+model RefundLineItem {
+  id                  String         @id @default(cuid())
+  refundId            String
+  refund              Refund         @relation(fields: [refundId], references: [id], onDelete: Cascade)
+  orderLineItemId     String?
+  orderLineItem       OrderLineItem? @relation(fields: [orderLineItemId], references: [id], onDelete: SetNull)
+  shopifyRefundLineId String?
+  quantity            Int?
+  subtotalAmount      Decimal?       @db.Decimal(14, 2)
+  taxAmount           Decimal?       @db.Decimal(14, 2)
+  rawPayload          Json?
+  createdAt           DateTime       @default(now())
+
+  @@index([refundId])
+  @@index([orderLineItemId])
+}
+
+model OrderShippingLine {
+  id           String   @id @default(cuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  shippingCode String?
+  title        String?
+  revenueAmount Decimal? @db.Decimal(14, 2)
+  costEstimate Decimal? @db.Decimal(14, 2)
+  rawPayload   Json?
+  createdAt    DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model OrderDiscount {
+  id               String   @id @default(cuid())
+  orderId          String
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  lineItemId       String?
+  shopifyTargetId  String?
+  title            String?
+  allocationMethod String?
+  targetType       String?
+  amount           Decimal? @db.Decimal(14, 2)
+  rawPayload       Json?
+  createdAt        DateTime @default(now())
+
+  @@index([orderId])
+  @@index([lineItemId])
+}
+
+model OrderTaxLine {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  lineItemId String?
+  title      String?
+  rate       Decimal? @db.Decimal(8, 5)
+  amount     Decimal? @db.Decimal(14, 2)
+  rawPayload Json?
+  createdAt  DateTime @default(now())
+
+  @@index([orderId])
+  @@index([lineItemId])
+}
+
+model OrderTransactionRaw {
+  id                   String   @id @default(cuid())
+  orderId              String
+  order                Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  shopifyTransactionId String?
+  kind                 String?
+  gateway              String?
+  status               String?
+  amount               Decimal? @db.Decimal(14, 2)
+  currencyCode         String?
+  rawPayload           Json
+  createdAt            DateTime @default(now())
+
+  @@index([orderId])
+  @@index([shopifyTransactionId])
+}
+
+model VariantCost {
+  id              String                @id @default(cuid())
+  shopId          String
+  shop            Shop                  @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  variantId       String?
+  variant         Variant?              @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  sku             String?
+  sourceType      CostSourceType
+  costAmount      Decimal               @db.Decimal(14, 4)
+  currencyCode    String
+  confidenceLevel DataCompletenessLevel @default(MEDIUM)
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?
+  importedBatchKey String?
+  notes           String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([shopId, variantId])
+  @@index([shopId, sku])
+  @@index([shopId, sourceType])
+}
+
+model CategoryCostProfile {
+  id              String   @id @default(cuid())
+  shopId          String
+  shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  categoryKey     String
+  defaultCostRate Decimal  @db.Decimal(6, 4)
+  importedBatchKey String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([shopId, categoryKey])
+  @@index([shopId, importedBatchKey])
+}
+
+model SupplierContractProfile {
+  id             String   @id @default(cuid())
+  shopId         String
+  shop           Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  vendorName     String
+  productType    String?
+  unitCostAmount Decimal  @db.Decimal(14, 4)
+  currencyCode   String
+  effectiveFrom  DateTime
+  effectiveTo    DateTime?
+  importedBatchKey String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([shopId, vendorName])
+  @@index([shopId, productType])
+  @@index([shopId, effectiveFrom])
+  @@index([shopId, effectiveTo])
+  @@index([shopId, importedBatchKey])
+}
+
+model CostImportBatch {
+  id              String           @id @default(cuid())
+  shopId          String
+  shop            Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  importType      CostImportType
+  mode            CostImportMode
+  status          CostImportStatus @default(APPLIED)
+  fileName        String?
+  rowCount        Int              @default(0)
+  appliedCount    Int              @default(0)
+  errorCount      Int              @default(0)
+  currencyCode    String?
+  summary         Json?
+  rollbackSummary Json?
+  rolledBackAt    DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([shopId, importType, createdAt])
+  @@index([shopId, status, createdAt])
+}
+
+model TransactionFeeProfile {
+  id             String   @id @default(cuid())
+  shopId         String
+  shop           Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  percentageRate Decimal  @db.Decimal(6, 4)
+  fixedFeeAmount Decimal  @db.Decimal(12, 4)
+  currencyCode   String
+  isDefault      Boolean  @default(true)
+  effectiveFrom  DateTime @default(now())
+  effectiveTo    DateTime?
+  createdAt      DateTime @default(now())
+
+  @@index([shopId, isDefault])
+}
+
+model NotificationPreference {
+  id                   String   @id @default(cuid())
+  shopId               String   @unique
+  shop                 Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  dailySummaryEnabled  Boolean  @default(true)
+  weeklySummaryEnabled Boolean  @default(true)
+  alertDigestEnabled   Boolean  @default(true)
+  recipientEmails      Json?
+  replyToEmail         String?
+  preferredSendHour    Int      @default(8)
+  timezoneOverride     String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([shopId, preferredSendHour])
+}
+
+model AdSpendManualEntry {
+  id           String   @id @default(cuid())
+  shopId       String
+  shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  entryDate    DateTime
+  channelKey   String
+  amount       Decimal  @db.Decimal(14, 2)
+  currencyCode String
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([shopId, entryDate, channelKey])
+}
+
+model FxRate {
+  id             String   @id @default(cuid())
+  rateDate       DateTime
+  baseCurrency   String
+  quoteCurrency  String
+  conversionRate Decimal  @db.Decimal(18, 8)
+  source         String?
+  createdAt      DateTime @default(now())
+
+  @@unique([rateDate, baseCurrency, quoteCurrency])
+}
+
+model DailyShopMetric {
+  id                           String                @id @default(cuid())
+  shopId                       String
+  shop                         Shop                  @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  metricDate                   DateTime
+  ordersCount                  Int                   @default(0)
+  grossSalesAmount             Decimal               @default(0) @db.Decimal(14, 2)
+  discountAmount               Decimal               @default(0) @db.Decimal(14, 2)
+  refundAmount                 Decimal               @default(0) @db.Decimal(14, 2)
+  shippingRevenueAmount        Decimal               @default(0) @db.Decimal(14, 2)
+  shippingCostEstimateAmount   Decimal               @default(0) @db.Decimal(14, 2)
+  transactionFeeEstimateAmount Decimal               @default(0) @db.Decimal(14, 2)
+  productCostAmount            Decimal               @default(0) @db.Decimal(14, 2)
+  grossProfitBeforeAdSpend     Decimal               @default(0) @db.Decimal(14, 2)
+  grossMarginRate              Decimal?              @db.Decimal(8, 5)
+  averageOrderShippingCost     Decimal?              @db.Decimal(14, 2)
+  refundRate                   Decimal?              @db.Decimal(8, 5)
+  discountRate                 Decimal?              @db.Decimal(8, 5)
+  completenessLevel            DataCompletenessLevel @default(LOW)
+  createdAt                    DateTime              @default(now())
+  updatedAt                    DateTime              @updatedAt
+
+  @@unique([shopId, metricDate])
+  @@index([shopId, metricDate])
+}
+
+model DailyChannelMetric {
+  id                       String   @id @default(cuid())
+  shopId                   String
+  shop                     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  metricDate               DateTime
+  channelKey               String
+  ordersCount              Int      @default(0)
+  grossSalesAmount         Decimal  @default(0) @db.Decimal(14, 2)
+  grossProfitBeforeAdSpend Decimal  @default(0) @db.Decimal(14, 2)
+  grossMarginRate          Decimal? @db.Decimal(8, 5)
+  refundAmount             Decimal  @default(0) @db.Decimal(14, 2)
+  shippingCostAmount       Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@unique([shopId, metricDate, channelKey])
+}
+
+model DailySkuMetric {
+  id                       String   @id @default(cuid())
+  shopId                   String
+  shop                     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  variantId                String?
+  variant                  Variant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  metricDate               DateTime
+  sku                      String?
+  ordersCount              Int      @default(0)
+  quantitySold             Int      @default(0)
+  grossSalesAmount         Decimal  @default(0) @db.Decimal(14, 2)
+  discountAmount           Decimal  @default(0) @db.Decimal(14, 2)
+  refundAmount             Decimal  @default(0) @db.Decimal(14, 2)
+  productCostAmount        Decimal  @default(0) @db.Decimal(14, 2)
+  grossProfitBeforeAdSpend Decimal  @default(0) @db.Decimal(14, 2)
+  grossMarginRate          Decimal? @db.Decimal(8, 5)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([shopId, metricDate])
+  @@index([shopId, sku])
+  @@index([variantId, metricDate])
+}
+
+model ProfitHealthScore {
+  id                String   @id @default(cuid())
+  shopId            String
+  shop              Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  scoreDate         DateTime
+  score             Int
+  levelLabel        String
+  deductionsPayload Json
+  createdAt         DateTime @default(now())
+
+  @@unique([shopId, scoreDate])
+}
+
+model DataCompletenessSnapshot {
+  id                  String                @id @default(cuid())
+  shopId              String
+  shop                Shop                  @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  snapshotDate        DateTime
+  level               DataCompletenessLevel
+  variantCoverageRate Decimal?              @db.Decimal(8, 5)
+  orderCoverageRate   Decimal?              @db.Decimal(8, 5)
+  payload             Json
+  createdAt           DateTime              @default(now())
+
+  @@unique([shopId, snapshotDate])
+}
+
+model AlertThread {
+  id              String   @id @default(cuid())
+  shopId          String
+  shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  alertType       String
+  entityType      String
+  entityKey       String
+  isOpen          Boolean  @default(true)
+  ownerName       String?
+  ownerAssignedAt DateTime?
+  reviewerName    String?
+  reviewedAt      DateTime?
+  workflowNote    String?
+  firstDetectedAt DateTime
+  lastDetectedAt  DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  alerts          Alert[]
+
+  @@index([shopId, alertType, entityType, entityKey])
+  @@index([shopId, isOpen])
+}
+
+model AlertSavedView {
+  id             String              @id @default(cuid())
+  shopId         String
+  shop           Shop                @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name           String
+  visibility     SavedViewVisibility @default(PRIVATE)
+  createdByLabel String?
+  description    String?
+  queue          String
+  severity       String
+  alertType      String
+  entityType     String
+  search         String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([shopId, visibility, name])
+  @@index([shopId, updatedAt])
+}
+
+model Alert {
+  id                String                @id @default(cuid())
+  shopId            String
+  shop              Shop                  @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  threadId          String?
+  thread            AlertThread?          @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  alertType         String
+  severity          AlertSeverity
+  status            AlertStatus           @default(NEW)
+  entityType        String
+  entityKey         String
+  title             String
+  impactAmount      Decimal?              @db.Decimal(14, 2)
+  currencyCode      String?
+  confidenceLevel   DataCompletenessLevel @default(MEDIUM)
+  completenessLevel DataCompletenessLevel @default(LOW)
+  detectedForDate   DateTime
+  firstDetectedAt   DateTime
+  lastDetectedAt    DateTime
+  expiresAt         DateTime?
+  rankScore         Decimal?              @db.Decimal(10, 4)
+  rulePayload       Json
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  statusHistory     AlertStatusHistory[]
+  feedbacks         AlertFeedback[]
+  aiArtifacts       AiArtifact[]
+
+  @@unique([shopId, alertType, entityType, entityKey, detectedForDate])
+  @@index([shopId, status, severity])
+  @@index([shopId, detectedForDate])
+  @@index([threadId])
+}
+
+model AlertStatusHistory {
+  id         String      @id @default(cuid())
+  alertId    String
+  alert      Alert       @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  fromStatus AlertStatus?
+  toStatus   AlertStatus
+  note       String?
+  actorType  String?
+  actorId    String?
+  createdAt  DateTime    @default(now())
+
+  @@index([alertId, createdAt])
+}
+
+model AlertFeedback {
+  id        String        @id @default(cuid())
+  alertId   String
+  alert     Alert         @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  feedback  FeedbackValue
+  note      String?
+  actorType String?
+  actorId   String?
+  createdAt DateTime      @default(now())
+
+  @@index([alertId, feedback])
+}
+
+model AiArtifact {
+  id           String         @id @default(cuid())
+  shopId       String
+  shop         Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  alertId      String?
+  alert        Alert?         @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  artifactType ArtifactType
+  referenceKey String
+  provider     String
+  modelName    String
+  inputHash    String
+  outputJson   Json?
+  status       ArtifactStatus @default(QUEUED)
+  fallbackUsed Boolean        @default(false)
+  errorMessage String?
+  generatedAt  DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([shopId, artifactType, referenceKey, inputHash])
+  @@index([shopId, artifactType, status])
+}
+
+model ReportSnapshot {
+  id           String     @id @default(cuid())
+  shopId       String
+  shop         Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  reportType   ReportType
+  periodStart  DateTime
+  periodEnd    DateTime
+  payload      Json
+  aiArtifactId String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  digestDeliveries DigestDelivery[]
+
+  @@unique([shopId, reportType, periodStart, periodEnd])
+}
+
+model ReportExport {
+  id           String     @id @default(cuid())
+  shopId       String
+  shop         Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  reportType   ReportType
+  exportFormat String
+  storageKey   String?
+  status       String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([shopId, reportType, createdAt])
+}
+
+model DigestDelivery {
+  id               String               @id @default(cuid())
+  shopId           String
+  shop             Shop                 @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  reportSnapshotId String?
+  reportSnapshot   ReportSnapshot?      @relation(fields: [reportSnapshotId], references: [id], onDelete: SetNull)
+  reportType       ReportType
+  deliveryChannel  String               @default("EMAIL")
+  exportFormat     String               @default("email_text")
+  recipientEmail   String
+  subject          String
+  status           DigestDeliveryStatus @default(PREPARED)
+  attemptCount     Int                  @default(0)
+  lastAttemptAt    DateTime?
+  deliveredAt      DateTime?
+  lastError        String?
+  metadata         Json?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([shopId, status, createdAt])
+  @@index([shopId, reportType, createdAt])
+  @@index([reportSnapshotId])
+  @@unique([shopId, reportSnapshotId, recipientEmail, exportFormat])
+}

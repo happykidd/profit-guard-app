@@ -1,0 +1,21 @@
+{
+  "name": "@profit-guard/db",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "prisma generate --schema ./prisma/schema.prisma",
+    "validate": "prisma validate --schema ./prisma/schema.prisma",
+    "migrate:dev": "prisma migrate dev --schema ./prisma/schema.prisma",
+    "migrate:deploy": "prisma migrate deploy --schema ./prisma/schema.prisma",
+    "studio": "prisma studio --schema ./prisma/schema.prisma",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.8",
+    "prisma": "^6.19.3",
+    "typescript": "^5.9.3"
+  }
+}

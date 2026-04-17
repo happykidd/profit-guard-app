@@ -1,0 +1,39 @@
+client_id = "3df4ebeed831cbb2bc9c4adc45d655cc"
+name = "Profit Guard"
+application_url = "https://shopify.dev/apps/default-app-home"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+
+[access_scopes]
+scopes = "read_orders,write_orders,read_products,write_products,read_inventory"
+
+[webhooks]
+api_version = "2026-04"
+
+[[webhooks.subscriptions]]
+topics = [ "app/uninstalled" ]
+uri = "/webhooks/app/uninstalled"
+
+[[webhooks.subscriptions]]
+topics = [ "app/scopes_update" ]
+uri = "/webhooks/app/scopes_update"
+
+[[webhooks.subscriptions]]
+topics = [ "shop/update" ]
+uri = "/webhooks/shop/update"
+
+[[webhooks.subscriptions]]
+topics = [ "app_subscriptions/update" ]
+uri = "/webhooks/app/subscriptions_update"
+
+[[webhooks.subscriptions]]
+compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+uri = "/webhooks/compliance"
+
+[auth]
+redirect_urls = [
+  "https://shopify.dev/apps/default-app-home/api/auth",
+  "https://shopify.dev/apps/default-app-home/auth/callback",
+]
