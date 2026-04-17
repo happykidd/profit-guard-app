@@ -580,7 +580,7 @@ export default function CostsPage() {
 
       <s-section heading="Manual SKU cost update">
         <s-paragraph>
-          可以先手工补单个 SKU；如果供应商已经有表格，直接用下面的 CSV 导入更快。
+          Start with a manual SKU cost when you only need to patch one item. If your supplier already has a spreadsheet, the CSV flows below are faster and easier to audit.
         </s-paragraph>
 
         <Form method="post" style={{ display: "grid", gap: "0.75rem", maxWidth: "40rem" }}>
@@ -667,14 +667,13 @@ export default function CostsPage() {
 
       <s-section heading="Direct cost CSV import">
         <s-paragraph>
-          支持列：<code>sku</code>、<code>shopify_variant_id</code>、<code>cost_amount</code>、<code>currency_code</code>、<code>notes</code>。
+          Supported columns: <code>sku</code>, <code>shopify_variant_id</code>, <code>cost_amount</code>, <code>currency_code</code>, and <code>notes</code>.
         </s-paragraph>
         <s-paragraph>
-          至少要提供 <code>sku</code> 或 <code>shopify_variant_id</code> 之一，重复 key 会被拦截。
+          Provide at least one of <code>sku</code> or <code>shopify_variant_id</code>. Duplicate keys are rejected during validation.
         </s-paragraph>
         <s-paragraph>
-          Import mode 说明：<code>Preview</code> 只做校验；<code>Upsert</code> 只覆盖当前文件里的 rows；
-          <code>Replace</code> 会先 retire 当前 active 的 CSV 成本，再应用新文件。
+          Import modes: <code>Preview</code> validates only. <code>Upsert</code> updates only the rows in the current file. <code>Replace</code> retires the current active CSV direct costs before applying the new file.
         </s-paragraph>
 
         <Form
@@ -745,9 +744,7 @@ export default function CostsPage() {
 
       <s-section heading="Supplier contract profiles">
         <s-paragraph>
-          当某个 vendor 已经有稳定的合同单件成本，但 SKU 还没逐个补齐时，可以先用 supplier contract 兜底。
-          worker 会优先使用更具体的 direct cost；若 direct 缺失，则先尝试 <code>vendor + productType</code>，再尝试
-          <code>vendor</code> 级合同单价，最后才退回 percentage fallback。
+          Use supplier contracts when a vendor has a stable landed unit cost but individual SKU costs are not complete yet. Profit Guard always prefers a more specific direct cost first; if none exists, it tries <code>vendor + productType</code>, then a vendor-level contract, and only then falls back to a percentage rule.
         </s-paragraph>
         <s-paragraph>
           Direct cost missing: {data.costCoverageSummary.missingDirectCostCount} · Covered by supplier contract:{" "}
@@ -758,12 +755,10 @@ export default function CostsPage() {
         <div style={{ display: "grid", gap: "1rem", marginBottom: "1rem", maxWidth: "40rem" }}>
           <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
             <s-paragraph>
-              批量导入支持列：<code>vendor_name</code>、<code>product_type</code>、
-              <code>unit_cost_amount</code>、<code>currency_code</code>、<code>notes</code>。
+              Supported columns for bulk import: <code>vendor_name</code>, <code>product_type</code>, <code>unit_cost_amount</code>, <code>currency_code</code>, and <code>notes</code>.
             </s-paragraph>
             <s-paragraph>
-              Supplier contract import 同样支持 <code>Preview / Upsert / Replace</code>。其中 <code>Replace</code>{" "}
-              会先 retire 当前 active 的 contract 集合，再应用新文件。
+              Supplier contract imports support <code>Preview / Upsert / Replace</code> as well. <code>Replace</code> retires the current active contract set before applying the new file.
             </s-paragraph>
 
             <Form
@@ -965,8 +960,7 @@ export default function CostsPage() {
 
       <s-section heading="Fallback cost rules">
         <s-paragraph>
-          当某个 variant 没有直接 SKU 成本时，worker 会按 <code>productType → vendor → tag</code> 的优先级回退到
-          对应的默认成本率，并按 <code>net sales × rate</code> 估算产品成本。
+          When a variant has no direct SKU cost, Profit Guard falls back in this order: <code>productType → vendor → tag</code>. The matched default rate is applied as <code>net sales × rate</code> to estimate product cost.
         </s-paragraph>
         <s-paragraph>
           Direct cost missing: {data.costCoverageSummary.missingDirectCostCount} · Covered by supplier contract:{" "}
@@ -977,13 +971,10 @@ export default function CostsPage() {
         <div style={{ display: "grid", gap: "1rem", marginBottom: "1rem", maxWidth: "40rem" }}>
           <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
             <s-paragraph>
-              批量导入支持列：<code>match_scope</code>、<code>match_key</code>、<code>default_cost_rate</code>、
-              <code>notes</code>。`match_scope` 目前支持 <code>product_type</code>、<code>vendor</code>、
-              <code>tag</code>。
+              Supported columns for bulk import: <code>match_scope</code>, <code>match_key</code>, <code>default_cost_rate</code>, and <code>notes</code>. <code>match_scope</code> currently supports <code>product_type</code>, <code>vendor</code>, and <code>tag</code>.
             </s-paragraph>
             <s-paragraph>
-              Fallback rule import 也支持 <code>Preview / Upsert / Replace</code>。其中 <code>Replace</code> 会将当前
-              rule 集合整体替换为 CSV 文件中的规则。
+              Fallback rule imports also support <code>Preview / Upsert / Replace</code>. <code>Replace</code> swaps the current rule set with the rules in the uploaded CSV.
             </s-paragraph>
 
             <Form
@@ -1179,8 +1170,7 @@ export default function CostsPage() {
 
       <s-section heading="Recent import batches">
         <s-paragraph>
-          这里会保留 direct cost / supplier contract / fallback rule 的 preview、apply、replace 历史。每个 batch
-          都可以导出 audit CSV；最新的 applied batch 支持安全 rollback。
+          This workspace keeps the preview, apply, and replace history for direct costs, supplier contracts, and fallback rules. Every batch can be exported as an audit CSV, and the newest applied batch supports a safe rollback.
         </s-paragraph>
         {data.recentImports.length > 0 ? (
           <div style={{ display: "grid", gap: "0.75rem" }}>

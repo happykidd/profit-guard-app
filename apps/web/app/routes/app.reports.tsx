@@ -347,7 +347,7 @@ export default function ReportsPage() {
         <s-paragraph>
           {activeGenerator?.mode === "openai-assisted"
             ? `Current reports are being generated with ${activeGenerator.provider} (${activeGenerator.modelName}) and numeric guardrails. If the AI response fails validation, Profit Guard automatically falls back to the structured summary template.`
-            : "这里的 daily / weekly reports 目前走 rules-first fallback 生成，直接复用 daily metrics、health、completeness 和 top alerts，不依赖外部 AI 才能稳定工作。现在也能直接导出 HTML / Email TXT / PDF / Share Image，方便把 daily 或 weekly summary 发给商家、支持或内部复盘。"}
+            : "Daily and weekly reports are currently generated through the rules-first fallback path. They reuse daily metrics, health, completeness, and top alerts so reporting remains stable even without an external AI provider. You can also export HTML, Email TXT, PDF, and Share Image formats for merchants, support, or internal reviews."}
         </s-paragraph>
       </s-section>
 
@@ -380,8 +380,7 @@ export default function ReportsPage() {
 
       <s-section heading="Digest delivery history">
         <s-paragraph>
-          这里会保留最近的 daily / weekly digest delivery records，方便支持团队看 prepared、failed、
-          sent 的状态流转，并手动重试或标记结果。
+          Recent daily and weekly digest delivery records stay here so the team can review prepared, failed, and sent states, then retry or mark outcomes manually when needed.
         </s-paragraph>
         {data.recentDigestDeliveries.length > 0 ? (
           <div style={{ display: "grid", gap: "0.75rem" }}>

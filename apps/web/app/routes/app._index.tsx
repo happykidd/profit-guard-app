@@ -402,38 +402,38 @@ export default function Index() {
 
       <s-section heading="Store status">
         <s-paragraph>
-          当前店铺：<strong>{data.shop.shopName || data.shop.shopDomain}</strong>
+          Current store: <strong>{data.shop.shopName || data.shop.shopDomain}</strong>
         </s-paragraph>
         <s-paragraph>
-          安装状态：{data.shop.isActive ? "Active" : "Inactive"} · 订阅计划：
+          Installation status: {data.shop.isActive ? "Active" : "Inactive"} · Plan:
           {" "}
           {data.billingState.currentPlan}
         </s-paragraph>
         <s-paragraph>
-          货币：{data.shop.currencyCode || "Unknown"} · 时区：
+          Currency: {data.shop.currencyCode || "Unknown"} · Timezone:
           {" "}
-          {data.shop.ianaTimezone || "Unknown"} · 最近同步：
+          {data.shop.ianaTimezone || "Unknown"} · Last sync:
           {" "}
           {formatDate(data.shop.lastSyncedAt)}
         </s-paragraph>
         <s-paragraph>
-          Worker 回填状态：<strong>{data.shop.backfillStatus}</strong>
+          Historical sync status: <strong>{data.shop.backfillStatus}</strong>
         </s-paragraph>
       </s-section>
 
       <s-section heading="Billing overview">
         <s-paragraph>
-          当前订阅状态：<strong>{data.billingState.subscriptionStatus}</strong>
+          Current subscription status: <strong>{data.billingState.subscriptionStatus}</strong>
         </s-paragraph>
         <s-paragraph>
           {activeSubscription
-            ? `当前有效订阅：${activeSubscription.name} · ${activeSubscription.displayPrice || "Price unavailable"}`
-            : "当前没有有效付费订阅，默认按试用/Free 状态运行。"}
+            ? `Active subscription: ${activeSubscription.name} · ${activeSubscription.displayPrice || "Price unavailable"}`
+            : "No active paid subscription. Profit Guard is currently running in trial or free mode."}
         </s-paragraph>
         <s-paragraph>
-          Trial 截止：{formatDate(data.billingState.trialEndsAt)}
+          Trial ends: {formatDate(data.billingState.trialEndsAt)}
           {" · "}
-          Billing mode：{data.isBillingTestMode ? "Test" : "Live"}
+          Billing mode: {data.isBillingTestMode ? "Test" : "Live"}
         </s-paragraph>
         <s-link href="/app/billing">Open billing center</s-link>
       </s-section>
@@ -442,24 +442,24 @@ export default function Index() {
         {data.recentDailyMetrics.length > 0 ? (
           <>
             <s-paragraph>
-              最新统计日期：<strong>{formatDate(data.recentDailyMetrics[0].metricDate)}</strong>
+              Latest metric date: <strong>{formatDate(data.recentDailyMetrics[0].metricDate)}</strong>
             </s-paragraph>
             <s-paragraph>
-              昨日毛销售额：{formatCurrency(data.recentDailyMetrics[0].grossSalesAmount, data.shop.currencyCode || "USD")}
+              Yesterday gross sales: {formatCurrency(data.recentDailyMetrics[0].grossSalesAmount, data.shop.currencyCode || "USD")}
               {" · "}
-              Estimated Gross Profit：{formatCurrency(data.recentDailyMetrics[0].grossProfitBeforeAdSpend, data.shop.currencyCode || "USD")}
+              Estimated gross profit: {formatCurrency(data.recentDailyMetrics[0].grossProfitBeforeAdSpend, data.shop.currencyCode || "USD")}
             </s-paragraph>
             <s-paragraph>
-              毛利率：{formatPercent(data.recentDailyMetrics[0].grossMarginRate)}
+              Gross margin: {formatPercent(data.recentDailyMetrics[0].grossMarginRate)}
               {" · "}
-              Refund rate：{formatPercent(data.recentDailyMetrics[0].refundRate)}
+              Refund rate: {formatPercent(data.recentDailyMetrics[0].refundRate)}
               {" · "}
-              Discount rate：{formatPercent(data.recentDailyMetrics[0].discountRate)}
+              Discount rate: {formatPercent(data.recentDailyMetrics[0].discountRate)}
             </s-paragraph>
             <s-paragraph>
-              Completeness：<strong>{data.latestCompletenessSnapshot?.level ?? data.recentDailyMetrics[0].completenessLevel}</strong>
+              Completeness: <strong>{data.latestCompletenessSnapshot?.level ?? data.recentDailyMetrics[0].completenessLevel}</strong>
               {" · "}
-              Profit Health Score：
+              Profit health score:
               {" "}
               <strong>
                 {data.latestHealthScore ? `${data.latestHealthScore.score} (${data.latestHealthScore.levelLabel})` : "Not available"}
@@ -629,10 +629,10 @@ export default function Index() {
 
       <s-section slot="aside" heading="Next execution focus">
         <s-paragraph>
-          当前 Dashboard 已不再是模板产品 demo，而是 Profit Guard 的店铺运营入口。
+          This dashboard is the live operating workspace for Profit Guard, not a starter template.
         </s-paragraph>
         <s-paragraph>
-          当前已接通回填、利润计算、成本中心和首批告警；下一步优先做真实店铺核账和告警闭环。
+          Historical sync, profit calculation, cost workflows, and first-line alerts are already connected. The next priority is validating outcomes against live store data and closing the alert action loop.
         </s-paragraph>
       </s-section>
     </s-page>

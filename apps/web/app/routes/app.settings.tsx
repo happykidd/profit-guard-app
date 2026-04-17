@@ -181,8 +181,7 @@ export default function SettingsPage() {
 
       <s-section heading="Notification and digest preferences">
         <s-paragraph>
-          控制 daily / weekly summary 和 alert digest 的邮件收件人、发送时段与 reply-to 信息。当前这层先完成
-          配置与导出留档，后续接真实邮件服务时可以直接复用。
+          Configure recipients, send windows, and reply-to details for daily summaries, weekly summaries, and alert digests. This layer already stores the settings and export history so it can plug directly into live email delivery.
         </s-paragraph>
         <Form method="post">
           <input type="hidden" name="intent" value="save_notification_preferences" />
@@ -271,8 +270,7 @@ export default function SettingsPage() {
 
       <s-section heading="Data export">
         <s-paragraph>
-          导出区现在除了 alerts / costs / summaries 之外，还提供一个完整的 portability bundle，用于卸载、
-          support handoff 或内部留档。
+          In addition to alerts, costs, and summaries, the export workspace also provides a full portability bundle for uninstall flows, support handoff, and internal record keeping.
         </s-paragraph>
         <div style={{ display: "grid", gap: "0.75rem" }}>
           {data.exportCapabilities.map((capability) => (

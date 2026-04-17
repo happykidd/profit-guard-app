@@ -245,10 +245,10 @@ export default function AlertsPage() {
           <strong>{data.criticalAlertsCount}</strong>
         </s-paragraph>
         <s-paragraph>
-          当前这页用于运营处理 alert，Dashboard 首页只显示 Top 5，这里会展示更完整的 active / closed 队列。
+          This page is the operating queue for alerts. The dashboard shows only the top five items; this workspace surfaces the full active and closed queues.
         </s-paragraph>
         <s-paragraph>
-          当前队列视图：<strong>{data.filters.queue}</strong>
+          Current queue view: <strong>{data.filters.queue}</strong>
           {data.filters.alertType !== "ALL" ? (
             <>
               {" "}· Alert type: <strong>{data.filters.alertType}</strong>

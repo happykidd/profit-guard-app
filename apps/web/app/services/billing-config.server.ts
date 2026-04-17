@@ -55,11 +55,11 @@ export const BILLING_PLAN_DETAILS = [
     title: "Starter",
     price: STARTER_PLAN_PRICE,
     currencyCode: BILLING_CURRENCY,
-    description: "适合刚开始验证毛利监控闭环的商家。",
+    description: "Built for merchants who are validating their first profit monitoring workflow.",
     features: [
-      "店铺级利润健康视图",
-      "基础毛利告警与平台状态追踪",
-      "首批同步与 webhook 生命周期记录",
+      "Store-level profit health visibility",
+      "Core margin alerts and platform status tracking",
+      "Initial sync coverage and webhook lifecycle records",
     ],
   },
   {
@@ -68,11 +68,11 @@ export const BILLING_PLAN_DETAILS = [
     title: "Growth",
     price: GROWTH_PLAN_PRICE,
     currencyCode: BILLING_CURRENCY,
-    description: "适合需要更多运营节奏和更高告警密度的增长型商家。",
+    description: "Built for growth-stage merchants who need a stronger operating cadence and denser alert coverage.",
     features: [
-      "包含 Starter 全部能力",
-      "更多历史同步与后续 AI 总结扩展位",
-      "面向多阶段运营的更高扩展上限",
+      "Everything in Starter",
+      "More historical sync coverage and room for expanded AI summaries",
+      "Higher headroom for multi-stage operating workflows",
     ],
   },
 ] as const;
