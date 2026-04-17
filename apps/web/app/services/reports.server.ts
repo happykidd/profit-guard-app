@@ -1458,6 +1458,23 @@ function toStoredDigestDelivery(delivery: {
   };
 }
 
+function toDateKey(value: Date | string) {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function isSnapshotCurrentForMetricDate(args: {
+  latestMetricDate: Date | null;
+  snapshot: {
+    periodEnd: Date | string;
+  } | null;
+}) {
+  if (!args.latestMetricDate || !args.snapshot) {
+    return false;
+  }
+
+  return toDateKey(args.latestMetricDate) === toDateKey(args.snapshot.periodEnd);
+}
+
 export async function generateReportSnapshot(args: {
   reportType: ReportType;
   shopDomain: string;
@@ -1620,7 +1637,7 @@ export async function getReportsOverview(shopDomain: string) {
     return null;
   }
 
-  const [latestMetric, dailyReport, weeklyReport, recentExports, recentDigestDeliveries] = await Promise.all([
+  const [latestMetric, dailyReportRecord, weeklyReportRecord, recentExports, recentDigestDeliveries] = await Promise.all([
     db.dailyShopMetric.findFirst({
       where: {
         shopId: shop.id,
@@ -1670,9 +1687,42 @@ export async function getReportsOverview(shopDomain: string) {
     }),
   ]);
 
+  let dailyReport = dailyReportRecord ? toStoredSnapshot(dailyReportRecord) : null;
+  let weeklyReport = weeklyReportRecord ? toStoredSnapshot(weeklyReportRecord) : null;
+
+  if (
+    latestMetric &&
+    !isSnapshotCurrentForMetricDate({
+      latestMetricDate: latestMetric.metricDate,
+      snapshot: dailyReport,
+    })
+  ) {
+    dailyReport = (
+      await generateReportSnapshot({
+        reportType: ReportType.DAILY,
+        shopDomain,
+      })
+    ).snapshot;
+  }
+
+  if (
+    latestMetric &&
+    !isSnapshotCurrentForMetricDate({
+      latestMetricDate: latestMetric.metricDate,
+      snapshot: weeklyReport,
+    })
+  ) {
+    weeklyReport = (
+      await generateReportSnapshot({
+        reportType: ReportType.WEEKLY,
+        shopDomain,
+      })
+    ).snapshot;
+  }
+
   return {
     currencyCode: shop.currencyCode ?? "USD",
-    dailyReport: dailyReport ? toStoredSnapshot(dailyReport) : null,
+    dailyReport,
     latestMetricDate: latestMetric?.metricDate.toISOString() ?? null,
     recentExports: recentExports.map((reportExport) => ({
       createdAt: reportExport.createdAt.toISOString(),
@@ -1685,7 +1735,7 @@ export async function getReportsOverview(shopDomain: string) {
     recentDigestDeliveries: recentDigestDeliveries.map(toStoredDigestDelivery),
     shopId: shop.id,
     shopName: shop.shopName ?? shop.shopDomain,
-    weeklyReport: weeklyReport ? toStoredSnapshot(weeklyReport) : null,
+    weeklyReport,
   };
 }
 

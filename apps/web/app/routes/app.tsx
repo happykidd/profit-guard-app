@@ -1,5 +1,5 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Outlet, useLoaderData, useRouteError } from "react-router";
+import { Outlet, useLoaderData, useNavigation, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 
@@ -14,6 +14,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export default function App() {
   const { apiKey } = useLoaderData<typeof loader>();
+  const navigation = useNavigation();
+  const isNavigating = navigation.state === "loading";
 
   return (
     <AppProvider embedded apiKey={apiKey}>
@@ -28,6 +30,19 @@ export default function App() {
         <s-link href="/app/billing">Billing</s-link>
         <s-link href="/app/additional">Operations</s-link>
       </s-app-nav>
+      {isNavigating ? (
+        <div
+          style={{
+            background: "#eff6ff",
+            borderBottom: "1px solid #bfdbfe",
+            color: "#1d4ed8",
+            fontWeight: 600,
+            padding: "0.75rem 1rem",
+          }}
+        >
+          Loading the next Profit Guard workspace...
+        </div>
+      ) : null}
       <Outlet />
     </AppProvider>
   );

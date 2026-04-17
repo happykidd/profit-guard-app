@@ -169,6 +169,18 @@ function formatPlanPrice(planKey: string) {
   return `${plan.currencyCode} ${plan.price}/30d`;
 }
 
+function formatStoredSubscriptionPrice(args: {
+  currencyCode: string | null;
+  plan: BillingPlan;
+  priceAmount: string | null;
+}) {
+  if (args.priceAmount && args.currencyCode) {
+    return `${args.currencyCode} ${args.priceAmount}/30d`;
+  }
+
+  return formatPlanPrice(args.plan);
+}
+
 function toRecordValue(value: Prisma.JsonValue | null): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -354,6 +366,50 @@ export async function syncBillingState(params: {
       trialDays: subscription.trialDays,
       currentPeriodEnd: subscription.currentPeriodEnd,
       displayPrice: formatPlanPrice(subscription.name),
+    })),
+  };
+}
+
+export async function getStoredBillingState(shopDomain: string) {
+  const shop = await ensureShop(shopDomain);
+  const storedSubscriptions = await db.billingSubscription.findMany({
+    where: {
+      shopId: shop.id,
+      status: {
+        in: [
+          SubscriptionStatus.ACTIVE,
+          SubscriptionStatus.TRIALING,
+          SubscriptionStatus.PENDING,
+        ],
+      },
+    },
+    orderBy: [
+      {
+        currentPeriodEnd: "desc",
+      },
+      {
+        createdAt: "desc",
+      },
+    ],
+  });
+
+  return {
+    hasActivePayment: storedSubscriptions.length > 0,
+    currentPlan: shop.currentPlan,
+    subscriptionStatus: shop.subscriptionStatus,
+    trialEndsAt: shop.trialEndsAt,
+    appSubscriptions: storedSubscriptions.map((subscription) => ({
+      id: subscription.shopifyChargeId,
+      name: subscription.plan,
+      status: subscription.status,
+      test: subscription.test,
+      trialDays: subscription.trialDays,
+      currentPeriodEnd: subscription.currentPeriodEnd?.toISOString() ?? null,
+      displayPrice: formatStoredSubscriptionPrice({
+        currencyCode: subscription.currencyCode,
+        plan: subscription.plan,
+        priceAmount: subscription.priceAmount?.toString() ?? null,
+      }),
     })),
   };
 }

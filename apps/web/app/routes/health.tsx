@@ -6,7 +6,3 @@ export const loader = async () => {
     status: snapshot.status === "ok" ? 200 : 503,
   });
 };
-
-export default function HealthRoute() {
-  return null;
-}

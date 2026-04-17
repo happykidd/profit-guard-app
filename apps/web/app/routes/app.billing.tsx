@@ -8,6 +8,7 @@ import {
   isManagedBillingMode,
 } from "../services/billing-config.server";
 import {
+  getStoredBillingState,
   getBillingPlansForUi,
   listRecentBillingEvents,
   recordBillingRequest,
@@ -26,12 +27,8 @@ function formatDate(value?: string | null) {
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { billing, session } = await authenticate.admin(request);
-  const billingCheck = await billing.check();
-  const billingState = await syncBillingState({
-    shopDomain: session.shop,
-    billingCheck,
-  });
+  const { session } = await authenticate.admin(request);
+  const billingState = await getStoredBillingState(session.shop);
   const url = new URL(request.url);
   const recentEvents = await listRecentBillingEvents({
     shopDomain: session.shop,
@@ -62,6 +59,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const intent = formData.get("intent");
 
   if (intent === "refresh") {
+    const billingCheck = await billing.check();
+    await syncBillingState({
+      shopDomain: session.shop,
+      billingCheck,
+    });
     return redirect("/app/billing");
   }
 

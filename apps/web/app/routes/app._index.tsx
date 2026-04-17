@@ -14,7 +14,7 @@ import {
   transitionAlertStatus,
 } from "../services/alerts.server";
 import { BILLING_TEST_MODE } from "../services/billing-config.server";
-import { syncBillingState } from "../services/billing.server";
+import { getStoredBillingState } from "../services/billing.server";
 
 function formatDate(value?: string | null) {
   if (!value) {
@@ -65,9 +65,9 @@ function formatPercent(value?: string | number | null) {
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { billing, session } = await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
   const shopDomain = session.shop;
-  const [shop, recentSyncRuns, recentWebhookEvents, recentDailyMetrics, latestHealthScore, latestCompletenessSnapshot, topAlerts, billingCheck] = await Promise.all([
+  const [shop, recentSyncRuns, recentWebhookEvents, recentDailyMetrics, latestHealthScore, latestCompletenessSnapshot, topAlerts, billingState] = await Promise.all([
     db.shop.findUnique({
       where: {
         shopDomain,
@@ -145,13 +145,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       ],
       take: 5,
     }),
-    billing.check(),
+    getStoredBillingState(shopDomain),
   ]);
-
-  const billingState = await syncBillingState({
-    shopDomain,
-    billingCheck,
-  });
 
   return {
     billingState: {

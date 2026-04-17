@@ -1,5 +1,6 @@
-import { Prisma, SyncRunType } from "@prisma/client";
+import { Prisma, ReportType, SyncRunType } from "@prisma/client";
 import prisma from "../../../../packages/db/src/client";
+import { generateReportSnapshot } from "../../../web/app/services/reports.server";
 import { getDigestDispatchConfig, runDigestDispatchCycle } from "./digest-dispatch";
 import { rebuildDailyMetrics } from "./daily-metrics";
 import {
@@ -350,7 +351,27 @@ async function runDailyRebuild(run: ClaimedSyncRun) {
     runId: run.id,
   });
 
-  await markRunSucceeded(run, result);
+  const [dailyReport, weeklyReport] = await Promise.all([
+    generateReportSnapshot({
+      reportType: ReportType.DAILY,
+      shopDomain: run.shop.shopDomain,
+    }),
+    generateReportSnapshot({
+      reportType: ReportType.WEEKLY,
+      shopDomain: run.shop.shopDomain,
+    }),
+  ]);
+
+  await markRunSucceeded(run, {
+    ...result,
+    metadata: {
+      ...(result.metadata ?? {}),
+      generatedReports: {
+        dailySnapshotId: dailyReport.snapshot.id,
+        weeklySnapshotId: weeklyReport.snapshot.id,
+      },
+    },
+  });
   await updateShopBackfillState(run.shopId);
 }
 
